@@ -12,12 +12,14 @@ using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
 
+std::chrono::system_clock::time_point create_deadline(int timeout) {
+    return std::chrono::system_clock::now() + std::chrono::milliseconds(timeout);
+}
+
 class SimpleClient {
     public:
-        SimpleClient(std::shared_ptr<Channel> channel,
-                    std::function<void(const std::string& msg)> callback)
-            : stub_(Simple::NewStub(channel)),
-            clbk(callback) {}
+        SimpleClient(std::shared_ptr<Channel> channel)
+            : stub_(Simple::NewStub(channel)) {}
 
         // Assembles the client's payload, sends it and presents the response back
         // from the server.
@@ -38,6 +40,7 @@ class SimpleClient {
                 Impl(std::shared_ptr<Simple::Stub> stub_) : stub(stub_) {}
 
                 void Call(Request req) {
+                    ctx.set_deadline(create_deadline(100));
                     stub->async()->Call(&ctx, &req, &rep,
                                         [this](Status status) {
                                             if (status.ok()) {
@@ -60,15 +63,11 @@ class SimpleClient {
 
     private:
         std::shared_ptr<Simple::Stub> stub_;
-        std::function<void(const std::string&)> clbk;
 };
 
 int main(int argc, char** argv) {
     SimpleClient simple(
-        grpc::CreateChannel(std::string("localhost:50051"), grpc::InsecureChannelCredentials()),
-        [](const std::string& msg) {
-            std::cout << "Client received: " << msg << std::endl;
-        });
+        grpc::CreateChannel(std::string("localhost:50051"), grpc::InsecureChannelCredentials()));
     std::string reply = simple.call("world");
     std::cout << reply << std::endl;
     reply = simple.call("world");

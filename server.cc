@@ -18,7 +18,10 @@ class ServerImpl final : public Simple::CallbackService {
   ServerUnaryReactor* Call(CallbackServerContext* context,
                             const Request* request,
                             Reply* reply) override {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    
+    #ifdef TRIGGER_DEADLINE
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    #endif
 
     std::string prefix("Hello ");
     reply->set_rep(prefix + request->req());
