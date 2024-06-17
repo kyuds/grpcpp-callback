@@ -23,13 +23,13 @@ class SimpleClient {
 
         // Assembles the client's payload, sends it and presents the response back
         // from the server.
-        std::string call(const std::string& payload) {
+        std::string call(const std::string& payload, std::function<void(const std::string&)> clbk) {
             // Data we are sending to the server.
             Request request;
             request.set_req(payload);
 
             // The actual RPC
-            (new Impl(stub_))->Call(request);
+            (new Impl(stub_))->Call(request, std::move(clbk));
             
             return "finished";
         }
@@ -39,12 +39,12 @@ class SimpleClient {
             public:
                 Impl(std::shared_ptr<Simple::Stub> stub_) : stub(stub_) {}
 
-                void Call(Request req) {
+                void Call(Request req, std::function<void(const std::string&)> clbk) {
                     ctx.set_deadline(create_deadline(100));
                     stub->async()->Call(&ctx, &req, &rep,
-                                        [this](Status status) {
+                                        [this, clbk](Status status) {
                                             if (status.ok()) {
-                                                std::cout << "Client received: " << rep.rep() << std::endl;
+                                                clbk(rep.rep());
                                             } else {
                                                 std::cout << status.error_code() 
                                                         << ": " 
@@ -68,11 +68,17 @@ class SimpleClient {
 int main(int argc, char** argv) {
     SimpleClient simple(
         grpc::CreateChannel(std::string("localhost:50051"), grpc::InsecureChannelCredentials()));
-    std::string reply = simple.call("world");
+    std::string reply = simple.call("world", [](const std::string& msg) {
+        std::cout << "Client received: " << msg << std::endl;
+    });
     std::cout << reply << std::endl;
-    reply = simple.call("world");
+    reply = simple.call("world", [](const std::string& msg) {
+        std::cout << "Client received: " << msg << std::endl;
+    });
     std::cout << reply << std::endl;
-    reply = simple.call("world");
+    reply = simple.call("world", [](const std::string& msg) {
+        std::cout << "Client received: " << msg << std::endl;
+    });
     std::cout << reply << std::endl;
     std::this_thread::sleep_for(std::chrono::seconds(5));
     return 0;
