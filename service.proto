@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+service Simple {
+    rpc Call(Request) returns (Reply);
+}
+
+message Request {
+    string req = 1;
+}
+
+message Reply {
+    string rep = 1;
+}
